@@ -24,7 +24,7 @@ def test_project_totals_and_margin(auth_client, client_obj, product):
         "extra_charges": "0",
         "items": [
             {"product": product.id, "quantity": 3, "unit_price": "200", "unit_cost": "100",
-             "discount_pct": "0"}
+             "discount_pct": "0", "iva_pct": "0"}
         ],
     }
     resp = auth_client.post("/api/v1/projects/", payload, format="json")
@@ -68,7 +68,7 @@ def test_dashboard_aggregates(auth_client, client_obj, product):
         "client": client_obj.id, "status": "approved",
         "currency": "USD", "rate_used": "1000",
         "items": [{"product": product.id, "quantity": 1, "unit_price": "500",
-                   "unit_cost": "200", "discount_pct": "0"}],
+                   "unit_cost": "200", "discount_pct": "0", "iva_pct": "0"}],
     }, format="json")
     resp = auth_client.get("/api/v1/dashboard/")
     assert resp.status_code == 200

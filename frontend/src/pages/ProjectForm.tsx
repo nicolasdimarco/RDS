@@ -23,7 +23,7 @@ const empty: Partial<Project> = {
 }
 
 const emptyItem = (): ProjectItem => ({
-  product: 0, quantity: 1, unit_price: '0', unit_cost: '0', discount_pct: '0',
+  product: 0, quantity: 1, unit_price: '0', unit_cost: '0', discount_pct: '0', iva_pct: '0',
 })
 
 export default function ProjectFormPage() {
@@ -232,10 +232,12 @@ export default function ProjectFormPage() {
         <div className="card space-y-1 text-sm h-fit">
           <h3 className="font-semibold mb-2">Resumen</h3>
           <Row label="Subtotal" value={`${form.currency} ${computed.subtotal.toFixed(2)}`} />
-          <Row label="Costo" value={`${form.currency} ${computed.costTotal.toFixed(2)}`} />
-          <Row label="Total" value={`${form.currency} ${computed.total.toFixed(2)}`} bold />
-          <Row label="Ganancia" value={`${form.currency} ${computed.profit.toFixed(2)}`} accent="text-emerald-600" />
-          <Row label="Margen" value={`${computed.margin.toFixed(1)}%`} accent="text-emerald-600" />
+          <Row label="Descuento" value={`${form.currency} ${(computed.subtotal * Number(form.discount_pct ?? 0) / 100).toFixed(2)}`} />
+          <Row label="Cargos extra" value={`${form.currency} ${Number(form.extra_charges ?? 0).toFixed(2)}`} />
+          <Row label="Total" value={`${form.currency} ${computed.total.toFixed(2)}`} bold divider />
+          <Row label="Margen" value={`${computed.margin.toFixed(1)}%`} />
+          <Row label="Ganancia" value={`${form.currency} ${computed.profit.toFixed(2)}`} bold
+               accent={computed.profit > 0 ? 'text-emerald-600' : ''} />
           {form.currency === 'ARS' && form.rate_used && (
             <Row label="≈ USD" value={`US$ ${(computed.total / Number(form.rate_used)).toFixed(2)}`} muted />
           )}
@@ -252,11 +254,13 @@ export default function ProjectFormPage() {
             <thead>
               <tr>
                 <th>Producto</th>
-                <th className="text-right">Cant.</th>
-                <th className="text-right">Precio</th>
-                <th className="text-right">Costo</th>
-                <th className="text-right">Desc. %</th>
-                <th className="text-right">Subtotal</th>
+                <th>Cant.</th>
+                <th>Precio unitario</th>
+                <th>Costo</th>
+                <th>Desc. %</th>
+                <th>IVA %</th>
+                <th>IVA</th>
+                <th>Subtotal</th>
                 <th />
               </tr>
             </thead>
@@ -264,7 +268,8 @@ export default function ProjectFormPage() {
               {(form.items ?? []).map((it, idx) => {
                 const gross = Number(it.unit_price) * Number(it.quantity)
                 const disc = (gross * Number(it.discount_pct || 0)) / 100
-                const sub = gross - disc
+                const iva = (gross * Number(it.iva_pct || 0)) / 100
+                const sub = gross - disc + iva
                 return (
                   <tr key={idx}>
                     <td>
@@ -276,26 +281,36 @@ export default function ProjectFormPage() {
                                   product: pid,
                                   unit_price: p ? String(p.sale_price || p.suggested_price || '0') : it.unit_price,
                                   unit_cost: p ? String(p.cost ?? '0') : it.unit_cost,
+                                  iva_pct: p ? String(p.iva_pct ?? '0') : it.iva_pct,
                                 })
                               }}>
                         <option value="">— Producto —</option>
-                        {products?.map(p => <option key={p.id} value={p.id}>{p.sku} · {p.name}</option>)}
+                        {products?.map(p => (
+                          <option key={p.id} value={p.id}>
+                            {p.sku} · {p.brand_name ? `${p.brand_name} · ` : ''}{p.name}
+                          </option>
+                        ))}
                       </select>
                     </td>
-                    <td className="w-20"><input type="number" min={1} className="input text-right" value={it.quantity}
+                    <td className="w-20"><input type="number" min={1}
+                           className="input text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                           value={it.quantity}
                            onChange={(e) => updItem(idx, { quantity: Number(e.target.value) })} /></td>
                     <td className="w-28"><input className="input text-right" value={it.unit_price}
                            onChange={(e) => updItem(idx, { unit_price: e.target.value })} /></td>
-                    <td className="w-28 text-right tabular-nums">{Number(it.unit_cost ?? 0).toFixed(2)}</td>
+                    <td className="w-28"><input className="input text-right" value={it.unit_cost}
+                           onChange={(e) => updItem(idx, { unit_cost: e.target.value })} /></td>
                     <td className="w-20"><input className="input text-right" value={it.discount_pct}
                            onChange={(e) => updItem(idx, { discount_pct: e.target.value })} /></td>
+                    <td className="w-20 text-right tabular-nums">{Number(it.iva_pct ?? 0).toFixed(2)}%</td>
+                    <td className="w-24 text-right tabular-nums">{iva.toFixed(2)}</td>
                     <td className="text-right tabular-nums">{sub.toFixed(2)}</td>
                     <td className="text-right"><button type="button" className="btn-ghost text-red-600" onClick={() => rmItem(idx)} aria-label="Quitar item"><X className="h-4 w-4" /></button></td>
                   </tr>
                 )
               })}
               {!(form.items ?? []).length && (
-                <tr><td colSpan={7} className="text-center py-4 text-slate-400">Agregá al menos un item.</td></tr>
+                <tr><td colSpan={9} className="text-center py-4 text-slate-400">Agregá al menos un item.</td></tr>
               )}
             </tbody>
           </table>
@@ -356,11 +371,11 @@ export default function ProjectFormPage() {
   )
 }
 
-function Row({ label, value, bold, muted, accent }: {
-  label: string; value: string; bold?: boolean; muted?: boolean; accent?: string
+function Row({ label, value, bold, muted, accent, divider }: {
+  label: string; value: string; bold?: boolean; muted?: boolean; accent?: string; divider?: boolean
 }) {
   return (
-    <div className={`flex justify-between ${bold ? 'font-semibold pt-1 border-t border-slate-200 dark:border-slate-700' : ''} ${muted ? 'text-xs text-slate-500' : ''}`}>
+    <div className={`flex justify-between ${bold ? 'font-semibold' : ''} ${divider ? 'pt-1 border-t border-slate-200 dark:border-slate-700' : ''} ${muted ? 'text-xs text-slate-500' : ''}`}>
       <span>{label}:</span>
       <span className={`tabular-nums ${accent ?? ''}`}>{value}</span>
     </div>

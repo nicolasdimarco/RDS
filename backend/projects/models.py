@@ -79,6 +79,7 @@ class ProjectItem(models.Model):
     unit_price = models.DecimalField(max_digits=14, decimal_places=2)
     unit_cost = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0"))
     discount_pct = models.DecimalField(max_digits=6, decimal_places=2, default=Decimal("0"))
+    iva_pct = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("0"))
     line_total = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0"))
     line_cost_total = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0"))
 
@@ -88,7 +89,8 @@ class ProjectItem(models.Model):
     def compute_totals(self) -> None:
         gross = Decimal(self.unit_price) * Decimal(self.quantity)
         disc = (gross * Decimal(self.discount_pct or 0) / Decimal("100"))
-        self.line_total = (gross - disc).quantize(Decimal("0.01"))
+        iva = (gross * Decimal(self.iva_pct or 0) / Decimal("100"))
+        self.line_total = (gross - disc + iva).quantize(Decimal("0.01"))
         self.line_cost_total = (
             Decimal(self.unit_cost) * Decimal(self.quantity)
         ).quantize(Decimal("0.01"))

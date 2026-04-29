@@ -58,7 +58,7 @@ class ProjectItemSerializer(serializers.ModelSerializer):
         fields = (
             "id", "project", "product", "product_sku", "product_name",
             "description", "quantity", "unit_price", "unit_cost",
-            "discount_pct", "line_total", "line_cost_total",
+            "discount_pct", "iva_pct", "line_total", "line_cost_total",
         )
         read_only_fields = ("project", "line_total", "line_cost_total",
                             "product_sku", "product_name")
@@ -203,9 +203,11 @@ class ProjectSerializer(serializers.ModelSerializer):
     def _save_items(self, project: Project, raw_items) -> list[ProjectItem]:
         items: list[ProjectItem] = []
         for raw in raw_items:
-            unit_cost = raw.get("unit_cost")
-            if unit_cost in (None, "", 0, Decimal("0")):
-                # Default to product's average cost (USD) converted to project currency
+            # unit_cost is snapshotted at item creation. Only fall back to the
+            # catalog when no value was provided at all (key missing / null);
+            # an explicit "0" or any persisted value is preserved as-is so the
+            # snapshot survives later catalog price changes.
+            if raw.get("unit_cost") is None:
                 product = raw["product"]
                 if project.currency == "USD":
                     unit_cost = product.average_cost if product.cost_currency == "USD" else \
@@ -215,6 +217,8 @@ class ProjectSerializer(serializers.ModelSerializer):
                     base_usd = to_usd(product.average_cost, product.cost_currency, project.rate_used)
                     unit_cost = (base_usd * rate).quantize(Decimal("0.01"))
                 raw["unit_cost"] = unit_cost
+            if raw.get("iva_pct") is None:
+                raw["iva_pct"] = raw["product"].iva_pct
             item = ProjectItem(project=project, **raw)
             item.compute_totals()
             item.save()

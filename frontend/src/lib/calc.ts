@@ -15,7 +15,8 @@ export function computeProjectTotals(form: Partial<Project>): ProjectTotals {
   for (const it of items) {
     const gross = Number(it.unit_price) * Number(it.quantity)
     const disc = (gross * Number(it.discount_pct || 0)) / 100
-    subtotal += gross - disc
+    const iva = (gross * Number(it.iva_pct || 0)) / 100
+    subtotal += gross - disc + iva
     costTotal += Number(it.unit_cost) * Number(it.quantity)
   }
   const docDisc = (subtotal * Number(form.discount_pct ?? 0)) / 100
