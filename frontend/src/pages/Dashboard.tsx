@@ -49,6 +49,10 @@ export default function DashboardPage() {
         <Stat label="Margen" value={`${t.margin_pct.toFixed(1)}%`} accent="text-emerald-600" />
         <Stat label="Compras" value={fmtUSD(t.purchases_usd)} accent="text-amber-600" />
       </div>
+      <div className="grid grid-cols-2 md:grid-cols-2 gap-3 mb-5">
+        <Stat label="Cobrado" value={fmtUSD(t.collected_usd)} accent="text-emerald-600" />
+        <Stat label="Por cobrar" value={fmtUSD(t.receivable_usd)} accent="text-amber-600" />
+      </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
         <Stat label="Productos" value={data.stock.products} />
         <Stat label="Unidades en stock" value={data.stock.units} />

@@ -46,6 +46,7 @@ export interface Product {
   suggested_price: string
   sale_price: string
   sale_currency: Currency
+  iva_pct: string
   average_cost_usd: string
   sale_price_usd: string
   margin_pct: string
@@ -93,6 +94,7 @@ export interface ProjectItem {
   unit_price: string
   unit_cost: string
   discount_pct: string
+  iva_pct: string
   line_total?: string
   line_cost_total?: string
 }
@@ -118,9 +120,28 @@ export interface Project {
   cost_total_usd: string
   profit_usd: string
   margin_pct: string
+  paid_usd?: string
+  paid_pct?: string
+  balance_usd?: string
   stock_committed: boolean
   notes: string
   items: ProjectItem[]
+}
+
+export type PaymentMethod = 'cash' | 'transfer'
+
+export interface ProjectPayment {
+  id?: number
+  project: number
+  date: string
+  amount: string
+  currency: Currency
+  rate_used?: string | null
+  amount_usd?: string
+  method: PaymentMethod
+  notes?: string
+  created_at?: string
+  updated_at?: string
 }
 
 export interface StockMovement {
@@ -138,7 +159,10 @@ export interface StockMovement {
 }
 
 export interface DashboardData {
-  totals: { sold_usd: number; cost_usd: number; profit_usd: number; margin_pct: number; purchases_usd: number }
+  totals: {
+    sold_usd: number; cost_usd: number; profit_usd: number; margin_pct: number;
+    purchases_usd: number; collected_usd: number; receivable_usd: number
+  }
   status_counts: { status: string; count: number }[]
   stock: { products: number; units: number; low_stock: number; out_of_stock: number }
   monthly_sales: { month: string; total: number; profit: number; count: number }[]

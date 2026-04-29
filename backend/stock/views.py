@@ -1,4 +1,4 @@
-from django.db.models import F
+from django.db.models import F, Q
 from rest_framework import mixins, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -14,7 +14,10 @@ from .serializers import StockMovementSerializer
 
 class StockMovementViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin,
                            mixins.CreateModelMixin, viewsets.GenericViewSet):
-    queryset = StockMovement.objects.select_related("product").all()
+    queryset = (
+        StockMovement.objects.select_related("product")
+        .filter(Q(project_item__isnull=True) | Q(project_item__project__deleted_at__isnull=True))
+    )
     serializer_class = StockMovementSerializer
     permission_classes = (IsAdminOrReadOnly,)
     filterset_fields = ("product", "kind", "purchase", "project_item")

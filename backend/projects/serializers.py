@@ -7,7 +7,7 @@ from currency.services import current_rate, to_usd
 from stock.models import StockMovement
 from stock.services import register_movement
 
-from .models import Client, Project, ProjectItem
+from .models import Client, Project, ProjectItem, ProjectPayment
 
 
 class ClientSerializer(serializers.ModelSerializer):
@@ -64,9 +64,44 @@ class ProjectItemSerializer(serializers.ModelSerializer):
                             "product_sku", "product_name")
 
 
+class ProjectPaymentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProjectPayment
+        fields = (
+            "id", "project", "date", "amount", "currency", "rate_used",
+            "amount_usd", "method", "notes", "created_at", "updated_at",
+        )
+        read_only_fields = ("amount_usd", "created_at", "updated_at")
+
+    def create(self, validated_data):
+        if not validated_data.get("rate_used"):
+            validated_data["rate_used"] = current_rate()
+        request = self.context.get("request")
+        user = request.user if request else None
+        validated_data["amount_usd"] = to_usd(
+            validated_data["amount"],
+            validated_data["currency"],
+            validated_data.get("rate_used"),
+        )
+        return ProjectPayment.objects.create(created_by=user, updated_by=user, **validated_data)
+
+    def update(self, instance, validated_data):
+        for k, v in validated_data.items():
+            setattr(instance, k, v)
+        request = self.context.get("request")
+        if request:
+            instance.updated_by = request.user
+        instance.amount_usd = to_usd(instance.amount, instance.currency, instance.rate_used)
+        instance.save()
+        return instance
+
+
 class ProjectSerializer(serializers.ModelSerializer):
     items = ProjectItemSerializer(many=True)
     client_name = serializers.CharField(source="client.name", read_only=True)
+    paid_usd = serializers.SerializerMethodField()
+    paid_pct = serializers.SerializerMethodField()
+    balance_usd = serializers.SerializerMethodField()
 
     class Meta:
         model = Project
@@ -76,6 +111,7 @@ class ProjectSerializer(serializers.ModelSerializer):
             "currency", "rate_used", "discount_pct", "extra_charges",
             "subtotal", "total", "total_usd",
             "cost_total", "cost_total_usd", "profit_usd", "margin_pct",
+            "paid_usd", "paid_pct", "balance_usd",
             "stock_committed", "notes", "items",
             "created_at", "updated_at",
         )
@@ -83,8 +119,23 @@ class ProjectSerializer(serializers.ModelSerializer):
             "name",
             "subtotal", "total", "total_usd",
             "cost_total", "cost_total_usd", "profit_usd", "margin_pct",
+            "paid_usd", "paid_pct", "balance_usd",
             "stock_committed", "created_at", "updated_at",
         )
+
+    def get_paid_usd(self, obj: Project) -> str:
+        total = sum((p.amount_usd for p in obj.payments.all()), Decimal("0"))
+        return str(total.quantize(Decimal("0.01")))
+
+    def get_paid_pct(self, obj: Project) -> str:
+        paid = Decimal(self.get_paid_usd(obj))
+        if obj.total_usd and obj.total_usd > 0:
+            return str((paid / obj.total_usd * Decimal("100")).quantize(Decimal("0.01")))
+        return "0.00"
+
+    def get_balance_usd(self, obj: Project) -> str:
+        paid = Decimal(self.get_paid_usd(obj))
+        return str((obj.total_usd - paid).quantize(Decimal("0.01")))
 
     def _recalculate(self, project: Project, items: list[ProjectItem]) -> None:
         subtotal = sum((it.line_total for it in items), Decimal("0"))

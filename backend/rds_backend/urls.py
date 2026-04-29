@@ -14,7 +14,9 @@ from currency.views import CurrentRateView, ExchangeRateViewSet
 from dashboard.views import DashboardView
 from files.views import AttachmentViewSet
 from products.views import BrandViewSet, CategoryViewSet, ProductViewSet, PriceHistoryViewSet
-from projects.views import ClientViewSet, ProjectViewSet, ProjectItemViewSet
+from projects.views import (
+    ClientViewSet, ProjectItemViewSet, ProjectPaymentViewSet, ProjectViewSet,
+)
 from purchases.views import PurchaseViewSet, SupplierViewSet
 from stock.views import StockMovementViewSet, StockSummaryView, LowStockView
 from rest_framework_simplejwt.views import TokenRefreshView
@@ -33,6 +35,7 @@ router.register(r"purchases", PurchaseViewSet, basename="purchase")
 router.register(r"clients", ClientViewSet, basename="client")
 router.register(r"projects", ProjectViewSet, basename="project")
 router.register(r"project-items", ProjectItemViewSet, basename="project-item")
+router.register(r"project-payments", ProjectPaymentViewSet, basename="project-payment")
 router.register(r"stock-movements", StockMovementViewSet, basename="stock-movement")
 router.register(r"attachments", AttachmentViewSet, basename="attachment")
 

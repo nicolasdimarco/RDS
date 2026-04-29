@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from products.models import Product
-from projects.models import Project
+from projects.models import Project, ProjectPayment
 from purchases.models import Purchase
 from stock.models import StockMovement
 
@@ -41,6 +41,16 @@ class DashboardView(APIView):
         cost_total_usd = proj_qs.aggregate(s=Sum("cost_total_usd"))["s"] or Decimal("0")
         profit_total_usd = (sold_total_usd or 0) - (cost_total_usd or 0)
         margin = float(profit_total_usd / sold_total_usd * 100) if sold_total_usd else 0.0
+
+        # Cash collected (USD) for non-cancelled projects, and outstanding balance
+        collected_total_usd = (
+            ProjectPayment.objects.exclude(project__status=Project.STATUS_CANCELLED)
+            .aggregate(s=Sum("amount_usd"))["s"]
+            or Decimal("0")
+        )
+        receivable_total_usd = (sold_total_usd or Decimal("0")) - collected_total_usd
+        if receivable_total_usd < 0:
+            receivable_total_usd = Decimal("0")
 
         # Purchases totals
         purchases_total_usd = Purchase.objects.exclude(
@@ -94,6 +104,8 @@ class DashboardView(APIView):
                 "profit_usd": float(profit_total_usd),
                 "margin_pct": round(margin, 2),
                 "purchases_usd": float(purchases_total_usd),
+                "collected_usd": float(collected_total_usd),
+                "receivable_usd": float(receivable_total_usd),
             },
             "status_counts": status_counts,
             "stock": stock_summary,

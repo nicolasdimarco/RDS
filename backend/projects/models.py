@@ -92,3 +92,29 @@ class ProjectItem(models.Model):
         self.line_cost_total = (
             Decimal(self.unit_cost) * Decimal(self.quantity)
         ).quantize(Decimal("0.01"))
+
+
+class ProjectPayment(AuditedModel):
+    METHOD_CASH = "cash"
+    METHOD_TRANSFER = "transfer"
+    METHOD_CHOICES = (
+        (METHOD_CASH, "Efectivo"),
+        (METHOD_TRANSFER, "Transferencia"),
+    )
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="payments")
+    date = models.DateField()
+    amount = models.DecimalField(max_digits=14, decimal_places=2)
+    currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default=CURRENCY_USD)
+    rate_used = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
+    amount_usd = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0"))
+    method = models.CharField(max_length=16, choices=METHOD_CHOICES, default=METHOD_CASH)
+    notes = models.TextField(blank=True, default="")
+
+    class Meta:
+        ordering = ("-date", "-id")
+        verbose_name = "Movimiento de pago"
+        verbose_name_plural = "Movimientos de pago"
+
+    def __str__(self) -> str:
+        return f"{self.project_id} · {self.currency} {self.amount}"

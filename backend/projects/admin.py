@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Client, Project, ProjectItem
+from .models import Client, Project, ProjectItem, ProjectPayment
 
 
 @admin.register(Client)
@@ -24,3 +24,12 @@ class ProjectAdmin(admin.ModelAdmin):
     date_hierarchy = "created_at"
     autocomplete_fields = ("client",)
     inlines = [ProjectItemInline]
+
+
+@admin.register(ProjectPayment)
+class ProjectPaymentAdmin(admin.ModelAdmin):
+    list_display = ("project", "date", "amount", "currency", "amount_usd", "method")
+    list_filter = ("method", "currency")
+    search_fields = ("project__name", "notes")
+    date_hierarchy = "date"
+    autocomplete_fields = ("project",)
