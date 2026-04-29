@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Eye, Pencil, Trash2 } from 'lucide-react'
 import { api, unwrap } from '@/lib/api'
 import type { Purchase } from '@/lib/types'
 import { selectIsAdmin, useAuth } from '@/store/auth'
@@ -59,8 +60,8 @@ export default function PurchasesPage() {
           <thead>
             <tr>
               <th>#</th><th>Fecha</th><th>Proveedor</th><th>Factura</th>
-              <th>Estado</th><th className="text-right">Total</th>
-              <th className="text-right">USD</th><th />
+              <th>Estado</th><th>Total</th>
+              <th>USD</th><th />
             </tr>
           </thead>
           <tbody>
@@ -77,11 +78,16 @@ export default function PurchasesPage() {
                 <td className="text-right tabular-nums">{p.currency} {Number(p.total).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
                 <td className="text-right tabular-nums">US$ {Number(p.total_usd).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</td>
                 <td className="text-right whitespace-nowrap">
-                  <Link to={`/purchases/${p.id}`} className="btn-ghost">{isAdmin ? 'Editar' : 'Ver'}</Link>
+                  <Link to={`/purchases/${p.id}`} className="btn-ghost"
+                        aria-label={isAdmin ? 'Editar compra' : 'Ver compra'}
+                        title={isAdmin ? 'Editar' : 'Ver'}>
+                    {isAdmin ? <Pencil className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Link>
                   {isAdmin && (
                     <button className="btn-ghost text-red-600"
-                            onClick={() => confirm(`¿Eliminar la compra #${p.id}?`) && del.mutate(p.id)}>
-                      Eliminar
+                            onClick={() => confirm(`¿Eliminar la compra #${p.id}?`) && del.mutate(p.id)}
+                            aria-label="Eliminar compra" title="Eliminar">
+                      <Trash2 className="h-4 w-4" />
                     </button>
                   )}
                 </td>

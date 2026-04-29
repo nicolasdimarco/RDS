@@ -71,11 +71,11 @@ export default function StockPage() {
         <Stat label="Sin stock" value={summary?.out_of_stock ?? '—'} accent="text-red-600" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="space-y-4">
         <div className="card overflow-x-auto">
           <h3 className="font-semibold mb-3">Productos con stock bajo</h3>
           <table className="table">
-            <thead><tr><th>SKU</th><th>Producto</th><th className="text-right">Stock</th><th className="text-right">Mín.</th></tr></thead>
+            <thead><tr><th>SKU</th><th>Producto</th><th>Stock</th><th>Mín.</th></tr></thead>
             <tbody>
               {low?.map((p) => (
                 <tr key={p.id}>
@@ -93,7 +93,7 @@ export default function StockPage() {
         <div className="card overflow-x-auto">
           <h3 className="font-semibold mb-3">Últimos movimientos</h3>
           <table className="table">
-            <thead><tr><th>Fecha</th><th>Producto</th><th>Tipo</th><th className="text-right">Cant.</th><th>Nota</th></tr></thead>
+            <thead><tr><th>Fecha</th><th>Producto</th><th>Tipo</th><th>Cant.</th><th>Nota</th></tr></thead>
             <tbody>
               {movements?.map((m) => (
                 <tr key={m.id}>

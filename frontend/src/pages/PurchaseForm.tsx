@@ -196,10 +196,10 @@ export default function PurchaseFormPage() {
             <thead>
               <tr>
                 <th>Producto</th>
-                <th className="text-right">Cantidad</th>
-                <th className="text-right">Costo unit.</th>
-                <th className="text-right">Desc. %</th>
-                <th className="text-right">Subtotal</th>
+                <th>Cantidad</th>
+                <th>Costo unit.</th>
+                <th>Desc. %</th>
+                <th>Subtotal</th>
                 <th />
               </tr>
             </thead>
@@ -215,7 +215,7 @@ export default function PurchaseFormPage() {
                               onChange={(e) => {
                                 const pid = Number(e.target.value)
                                 const p = productMap[pid]
-                                updItem(idx, { product: pid, unit_cost: p ? String(p.last_cost || p.average_cost) : it.unit_cost })
+                                updItem(idx, { product: pid, unit_cost: p ? String(p.cost ?? '0') : it.unit_cost })
                               }}>
                         <option value="">— Producto —</option>
                         {products?.map(p => <option key={p.id} value={p.id}>{p.sku} · {p.name}</option>)}

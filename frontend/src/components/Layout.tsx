@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Package, Tags, ShoppingCart, Sun, Moon, Users,
-  Menu, X, UserCircle,
+  Menu, X, UserCircle, PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react'
 import { useAuth } from '@/store/auth'
 import { useTheme } from '@/store/theme'
@@ -20,6 +20,12 @@ const NAV = [
 
 export default function Layout() {
   const [open, setOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(
+    () => typeof localStorage !== 'undefined' && localStorage.getItem('rds-sidebar-collapsed') === '1',
+  )
+  useEffect(() => {
+    localStorage.setItem('rds-sidebar-collapsed', collapsed ? '1' : '0')
+  }, [collapsed])
   const navigate = useNavigate()
   const { user, logout } = useAuth()
   const { dark, toggle } = useTheme()
@@ -35,32 +41,40 @@ export default function Layout() {
     <div className="min-h-screen flex bg-slate-50 dark:bg-slate-900">
       {/* Sidebar */}
       <aside className={clsx(
-        'fixed inset-y-0 left-0 z-30 w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 transform transition-transform md:static md:translate-x-0',
+        'fixed inset-y-0 left-0 z-30 w-56 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 transform transition-all md:static md:translate-x-0',
         open ? 'translate-x-0' : '-translate-x-full',
+        collapsed ? 'md:w-14' : 'md:w-44',
       )}>
-        <div className="h-16 flex items-center justify-between px-5 border-b border-slate-200 dark:border-slate-700">
-          <Link to="/" className="flex items-center gap-2 font-semibold text-brand-600 dark:text-brand-400">
-            <Sun className="h-5 w-5" /> RDS Solar
+        <div className={clsx(
+          'h-16 flex items-center justify-between border-b border-slate-200 dark:border-slate-700',
+          collapsed ? 'md:px-2 md:justify-center px-4' : 'px-4',
+        )}>
+          <Link to="/" className="flex items-center gap-2 font-semibold text-brand-600 dark:text-brand-400 min-w-0">
+            <Sun className="h-5 w-5 shrink-0" />
+            <span className={clsx('truncate', collapsed && 'md:hidden')}>RDS Solar</span>
           </Link>
           <button className="md:hidden text-slate-500" onClick={() => setOpen(false)} aria-label="Cerrar menú">
             <X className="h-5 w-5" />
           </button>
         </div>
-        <nav className="p-3 space-y-1">
+        <nav className="p-2 space-y-1">
           {NAV.filter(n => !n.adminOnly || isAdmin).map((item) => (
             <NavLink
               key={item.to}
               to={item.to}
               end={item.to === '/'}
               onClick={() => setOpen(false)}
+              title={item.label}
               className={({ isActive }) => clsx(
-                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium',
+                'flex items-center gap-3 rounded-lg py-2 text-sm font-medium',
+                collapsed ? 'md:justify-center md:px-2 px-3' : 'px-3',
                 isActive
                   ? 'bg-brand-50 text-brand-700 dark:bg-brand-700/20 dark:text-brand-400'
                   : 'text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700',
               )}
             >
-              <item.Icon className="h-4 w-4" /> {item.label}
+              <item.Icon className="h-4 w-4 shrink-0" />
+              <span className={clsx('truncate', collapsed && 'md:hidden')}>{item.label}</span>
             </NavLink>
           ))}
         </nav>
@@ -72,6 +86,12 @@ export default function Layout() {
           <div className="flex items-center gap-3">
             <button className="md:hidden btn-ghost px-2" onClick={() => setOpen(true)} aria-label="Abrir menú">
               <Menu className="h-5 w-5" />
+            </button>
+            <button className="hidden md:inline-flex btn-ghost px-2"
+                    onClick={() => setCollapsed(c => !c)}
+                    title={collapsed ? 'Expandir menú' : 'Colapsar menú'}
+                    aria-label={collapsed ? 'Expandir menú' : 'Colapsar menú'}>
+              {collapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
             </button>
             <h1 className="hidden md:block text-sm text-slate-500 dark:text-slate-400">
               Gestión de instalaciones solares
