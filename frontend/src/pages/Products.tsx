@@ -1,5 +1,6 @@
 import { FormEvent, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Eye, Pencil, Trash2 } from 'lucide-react'
 import { api, extractApiError, unwrap } from '@/lib/api'
 import type { Brand, Category, Product } from '@/lib/types'
 import { selectIsAdmin, useAuth } from '@/store/auth'
@@ -12,6 +13,7 @@ const empty: Partial<Product> = {
   unit: 'unidad', min_stock: 0,
   cost_currency: 'USD', cost: '0', last_cost: '0', average_cost: '0',
   suggested_margin_pct: '30', sale_price: '0', sale_currency: 'USD',
+  iva_pct: '21.00',
   is_active: true,
 }
 
@@ -20,6 +22,7 @@ export default function ProductsPage() {
   const isAdmin = useAuth(selectIsAdmin)
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<Partial<Product> | null>(null)
+  const [viewing, setViewing] = useState<Product | null>(null)
   const [localError, setLocalError] = useState<string | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
 
@@ -93,10 +96,11 @@ export default function ProductsPage() {
           <thead>
             <tr>
               <th>SKU</th><th>Nombre</th><th>Categoría</th><th>Marca</th>
-              <th className="text-right">Stock</th><th className="text-right">Costo</th>
-              <th className="text-right">Precio sug.</th><th className="text-right">Precio</th>
-              <th className="text-right">Margen</th>
-              {isAdmin && <th />}
+              <th>Stock</th>
+              <th className="whitespace-nowrap">Costo</th>
+              <th className="whitespace-nowrap">Precio unitario</th>
+              <th>Margen</th>
+              <th />
             </tr>
           </thead>
           <tbody>
@@ -107,21 +111,32 @@ export default function ProductsPage() {
                 <td>{p.category_name}</td>
                 <td>{p.brand_name ?? '—'}</td>
                 <td className={`text-right tabular-nums ${p.low_stock ? 'text-amber-600 font-semibold' : ''}`}>{p.stock_qty}</td>
-                <td className="text-right tabular-nums">{p.cost_currency} {p.cost}</td>
-                <td className="text-right tabular-nums">{p.cost_currency} {p.suggested_price}</td>
-                <td className="text-right tabular-nums">{p.sale_currency} {p.sale_price}</td>
+                <td className="text-right tabular-nums whitespace-nowrap">{p.cost_currency} {p.cost}</td>
+                <td className="text-right tabular-nums whitespace-nowrap">{p.sale_currency} {p.sale_price}</td>
                 <td className={`text-right tabular-nums ${Number(p.margin_pct) < 0 ? 'text-red-600 font-semibold' : ''}`}>{p.margin_pct}%</td>
-                {isAdmin && (
-                  <td className="text-right">
-                    <button className="btn-ghost" onClick={() => setEditing(p)}>Editar</button>
+                <td className="text-right whitespace-nowrap">
+                  <button className="btn-ghost" onClick={() => setViewing(p)}
+                          aria-label="Ver producto" title="Ver">
+                    <Eye className="h-4 w-4" />
+                  </button>
+                  {isAdmin && (
+                    <button className="btn-ghost" onClick={() => setEditing(p)}
+                            aria-label="Editar producto" title="Editar">
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                  )}
+                  {isAdmin && (
                     <button className="btn-ghost text-red-600"
-                            onClick={() => confirm('¿Eliminar producto?') && del.mutate(p.id)}>Eliminar</button>
-                  </td>
-                )}
+                            onClick={() => confirm('¿Eliminar producto?') && del.mutate(p.id)}
+                            aria-label="Eliminar producto" title="Eliminar">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </td>
               </tr>
             ))}
             {!filtered.length && (
-              <tr><td colSpan={isAdmin ? 10 : 9} className="text-center py-6 text-slate-400">Sin resultados.</td></tr>
+              <tr><td colSpan={9} className="text-center py-6 text-slate-400">Sin resultados.</td></tr>
             )}
           </tbody>
         </table>
@@ -147,6 +162,77 @@ export default function ProductsPage() {
           </>
         )}
       </Modal>
+
+      <Modal open={!!viewing} onClose={() => setViewing(null)} wide
+             title={viewing ? `Producto · ${viewing.sku}` : 'Producto'}
+             footer={<button className="btn-secondary" onClick={() => setViewing(null)}>Cerrar</button>}>
+        {viewing && <ProductView product={viewing} />}
+      </Modal>
+    </div>
+  )
+}
+
+function ProductView({ product: p }: { product: Product }) {
+  const fmt = (currency: string, value: string | number) =>
+    `${currency} ${Number(value).toLocaleString('es-AR', { minimumFractionDigits: 2 })}`
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <Field label="SKU" value={<span className="font-mono">{p.sku}</span>} />
+        <Field label="Estado" value={p.is_active
+          ? <span className="badge bg-emerald-100 text-emerald-700">Activo</span>
+          : <span className="badge bg-slate-200 text-slate-600">Inactivo</span>} />
+        <Field label="Nombre" value={p.name} />
+        <Field label="Marca" value={p.brand_name ?? '—'} />
+        <Field label="Categoría" value={p.category_name} />
+        <Field label="Unidad" value={p.unit} />
+        {p.description && (
+          <div className="md:col-span-2"><Field label="Descripción" value={p.description} /></div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+        <div className="space-y-1">
+          <Row label="Costo" value={fmt(p.cost_currency, p.cost)} />
+          <Row label="IVA" value={`${Number(p.iva_pct).toFixed(2)}%`} />
+          <Row label="Costo último" value={fmt(p.cost_currency, p.last_cost)} muted />
+          <Row label="Costo promedio" value={fmt(p.cost_currency, p.average_cost)} muted />
+          <Row label="Costo promedio USD" value={fmt('US$', p.average_cost_usd)} muted />
+        </div>
+        <div className="space-y-1">
+          <Row label="Margen sugerido" value={`${Number(p.suggested_margin_pct).toFixed(2)}%`} />
+          <Row label="Precio unitario" value={fmt(p.sale_currency, p.sale_price)} bold />
+          <Row label="Precio USD" value={fmt('US$', p.sale_price_usd)} muted />
+          <Row label="Margen real" value={`${Number(p.margin_pct).toFixed(2)}%`}
+               accent={Number(p.margin_pct) < 0 ? 'text-red-600' : Number(p.margin_pct) > 0 ? 'text-emerald-600' : ''} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+        <Row label="Stock" value={`${p.stock_qty}`}
+             accent={p.low_stock ? 'text-amber-600 font-semibold' : ''} />
+        <Row label="Stock mínimo" value={`${p.min_stock}`} muted />
+      </div>
+    </div>
+  )
+}
+
+function Field({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div>
+      <div className="text-xs uppercase text-slate-500">{label}</div>
+      <div className="text-sm">{value}</div>
+    </div>
+  )
+}
+
+function Row({ label, value, bold, muted, accent }: {
+  label: string; value: React.ReactNode; bold?: boolean; muted?: boolean; accent?: string
+}) {
+  return (
+    <div className={`flex justify-between ${muted ? 'text-xs text-slate-500' : 'text-sm'}`}>
+      <span className={muted ? '' : 'text-slate-500'}>{label}</span>
+      <span className={`tabular-nums ${bold ? 'font-semibold' : ''} ${accent ?? ''}`}>{value}</span>
     </div>
   )
 }
@@ -189,8 +275,14 @@ function ProductForm({ formId, formRef, onSubmit, value, onChange, categories, b
         </select>
       </div>
       <div><label className="label">Costo</label><input className="input" type="number" min={0} step="0.01" required value={value.cost ?? ''} onChange={(e) => upd({ cost: e.target.value })} /></div>
+      <div><label className="label">IVA</label>
+        <select className="input" value={value.iva_pct ?? '21.00'} onChange={(e) => upd({ iva_pct: e.target.value })}>
+          <option value="21.00">21%</option>
+          <option value="10.50">10.5%</option>
+        </select>
+      </div>
       <div><label className="label">Margen sugerido %</label><input className="input" type="number" min={0} max={1000} step="0.01" required value={value.suggested_margin_pct ?? '0'} onChange={(e) => upd({ suggested_margin_pct: e.target.value })} /></div>
-      <div><label className="label">Precio venta</label><input className="input" type="number" min={0} step="0.01" required value={value.sale_price ?? '0'} onChange={(e) => upd({ sale_price: e.target.value })} /></div>
+      <div><label className="label">Precio unitario</label><input className="input" type="number" min={0} step="0.01" required value={value.sale_price ?? '0'} onChange={(e) => upd({ sale_price: e.target.value })} /></div>
       <div><label className="label">Moneda venta</label>
         <select className="input" value={value.sale_currency} onChange={(e) => upd({ sale_currency: e.target.value as any })}>
           <option value="USD">USD</option><option value="ARS">ARS</option>

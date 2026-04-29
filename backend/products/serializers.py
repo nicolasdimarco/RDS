@@ -25,6 +25,7 @@ class ProductSerializer(serializers.ModelSerializer):
     brand_name = serializers.CharField(source="brand.name", read_only=True, default=None)
     suggested_price = serializers.DecimalField(max_digits=14, decimal_places=2, read_only=True)
     cost = serializers.DecimalField(max_digits=14, decimal_places=2, required=True)
+    iva_pct = serializers.DecimalField(max_digits=5, decimal_places=2, required=False)
     average_cost_usd = serializers.SerializerMethodField()
     sale_price_usd = serializers.SerializerMethodField()
     margin_pct = serializers.SerializerMethodField()
@@ -38,7 +39,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "unit", "min_stock", "stock_qty", "low_stock",
             "cost_currency", "cost", "last_cost", "average_cost",
             "suggested_margin_pct", "suggested_price",
-            "sale_price", "sale_currency",
+            "sale_price", "sale_currency", "iva_pct",
             "average_cost_usd", "sale_price_usd", "margin_pct",
             "is_active", "image",
             "created_at", "updated_at",
@@ -92,6 +93,12 @@ class ProductSerializer(serializers.ModelSerializer):
         if value is None or value < Decimal("0") or value > Decimal("1000"):
             raise serializers.ValidationError("El margen debe estar entre 0 y 1000.")
         return value
+
+    def validate_iva_pct(self, value: Decimal) -> Decimal:
+        allowed = {Decimal("21.00"), Decimal("10.50")}
+        if value is None or Decimal(value).quantize(Decimal("0.01")) not in allowed:
+            raise serializers.ValidationError("El IVA debe ser 21% o 10.5%.")
+        return Decimal(value).quantize(Decimal("0.01"))
 
 
 class PriceHistorySerializer(serializers.ModelSerializer):

@@ -55,6 +55,10 @@ class Product(AuditedModel, SoftDeleteModel):
     suggested_margin_pct = models.DecimalField(max_digits=6, decimal_places=2, default=Decimal("30"))
     sale_price = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0"))
     sale_currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default=CURRENCY_USD)
+    IVA_21 = Decimal("21.00")
+    IVA_10_5 = Decimal("10.50")
+    IVA_CHOICES = ((IVA_21, "21%"), (IVA_10_5, "10.5%"))
+    iva_pct = models.DecimalField(max_digits=5, decimal_places=2, choices=IVA_CHOICES, default=IVA_21)
 
     is_active = models.BooleanField(default=True)
     image = models.ImageField(upload_to="products/", null=True, blank=True)

@@ -17,7 +17,7 @@ class BrandAdmin(admin.ModelAdmin):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ("sku", "name", "category", "stock_qty", "cost", "average_cost", "sale_price", "is_active")
+    list_display = ("sku", "name", "category", "stock_qty", "cost", "average_cost", "sale_price", "iva_pct", "is_active")
     list_filter = ("category", "brand", "is_active")
     search_fields = ("sku", "name")
 
