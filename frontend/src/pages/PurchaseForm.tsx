@@ -6,6 +6,7 @@ import { api, extractApiError, unwrap } from '@/lib/api'
 import type { Product, Purchase, PurchaseItem, Supplier } from '@/lib/types'
 import { computePurchaseTotals } from '@/lib/calc'
 import { selectIsAdmin, useAuth } from '@/store/auth'
+import { useIsMobile } from '@/lib/useMediaQuery'
 import PageHeader from '@/components/PageHeader'
 import CurrencyPicker from '@/components/CurrencyPicker'
 
@@ -25,6 +26,7 @@ export default function PurchaseFormPage() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const isAdmin = useAuth(selectIsAdmin)
+  const isMobile = useIsMobile()
   const [form, setForm] = useState<Partial<Purchase>>({ ...empty })
   const formRef = useRef<HTMLFormElement>(null)
   const [localError, setLocalError] = useState<string | null>(null)
@@ -191,53 +193,109 @@ export default function PurchaseFormPage() {
           <h3 className="font-semibold">Items</h3>
           <button type="button" className="btn-secondary" onClick={addItem}>+ Agregar item</button>
         </div>
-        <div className="overflow-x-auto">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Producto</th>
-                <th>Cantidad</th>
-                <th>Costo unit.</th>
-                <th>Desc. %</th>
-                <th>Subtotal</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {(form.items ?? []).map((it, idx) => {
-                const gross = Number(it.unit_cost) * Number(it.quantity)
-                const disc = (gross * Number(it.discount_pct || 0)) / 100
-                const sub = gross - disc
-                return (
-                  <tr key={idx}>
-                    <td>
-                      <select className="input" value={it.product || ''} required
-                              onChange={(e) => {
-                                const pid = Number(e.target.value)
-                                const p = productMap[pid]
-                                updItem(idx, { product: pid, unit_cost: p ? String(p.cost ?? '0') : it.unit_cost })
-                              }}>
-                        <option value="">— Producto —</option>
-                        {products?.map(p => <option key={p.id} value={p.id}>{p.sku} · {p.name}</option>)}
-                      </select>
-                    </td>
-                    <td className="w-24"><input type="number" min={1} className="input text-right" value={it.quantity}
-                           onChange={(e) => updItem(idx, { quantity: Number(e.target.value) })} /></td>
-                    <td className="w-32"><input className="input text-right" value={it.unit_cost}
-                           onChange={(e) => updItem(idx, { unit_cost: e.target.value })} /></td>
-                    <td className="w-24"><input className="input text-right" value={it.discount_pct}
-                           onChange={(e) => updItem(idx, { discount_pct: e.target.value })} /></td>
-                    <td className="text-right tabular-nums">{sub.toFixed(2)}</td>
-                    <td className="text-right"><button type="button" className="btn-ghost text-red-600" onClick={() => rmItem(idx)} aria-label="Quitar item"><X className="h-4 w-4" /></button></td>
-                  </tr>
-                )
-              })}
-              {!(form.items ?? []).length && (
-                <tr><td colSpan={6} className="text-center py-4 text-slate-400">Agregá al menos un item.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        {isMobile ? (
+          <div className="space-y-3">
+            {(form.items ?? []).map((it, idx) => {
+              const gross = Number(it.unit_cost) * Number(it.quantity)
+              const disc = (gross * Number(it.discount_pct || 0)) / 100
+              const sub = gross - disc
+              return (
+                <div key={idx} className="list-row space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-slate-500">Item #{idx + 1}</span>
+                    <button type="button" className="btn-ghost text-red-600 -my-1 -mr-1" onClick={() => rmItem(idx)} aria-label="Quitar item">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div>
+                    <label className="label">Producto</label>
+                    <select className="input" value={it.product || ''} required
+                            onChange={(e) => {
+                              const pid = Number(e.target.value)
+                              const p = productMap[pid]
+                              updItem(idx, { product: pid, unit_cost: p ? String(p.cost ?? '0') : it.unit_cost })
+                            }}>
+                      <option value="">— Producto —</option>
+                      {products?.map(p => <option key={p.id} value={p.id}>{p.sku} · {p.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="label">Cant.</label>
+                      <input type="number" min={1} inputMode="numeric" className="input text-right" value={it.quantity}
+                             onChange={(e) => updItem(idx, { quantity: Number(e.target.value) })} />
+                    </div>
+                    <div>
+                      <label className="label">Costo unit.</label>
+                      <input inputMode="decimal" className="input text-right" value={it.unit_cost}
+                             onChange={(e) => updItem(idx, { unit_cost: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className="label">Desc. %</label>
+                      <input inputMode="decimal" className="input text-right" value={it.discount_pct}
+                             onChange={(e) => updItem(idx, { discount_pct: e.target.value })} />
+                    </div>
+                  </div>
+                  <div className="flex justify-between pt-1 border-t border-slate-100 dark:border-slate-700">
+                    <span className="text-slate-500 text-sm">Subtotal</span>
+                    <span className="font-semibold tabular-nums">{form.currency} {sub.toFixed(2)}</span>
+                  </div>
+                </div>
+              )
+            })}
+            {!(form.items ?? []).length && (
+              <div className="text-center py-4 text-slate-400 text-sm">Agregá al menos un item.</div>
+            )}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th>Cantidad</th>
+                  <th>Costo unit.</th>
+                  <th>Desc. %</th>
+                  <th>Subtotal</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {(form.items ?? []).map((it, idx) => {
+                  const gross = Number(it.unit_cost) * Number(it.quantity)
+                  const disc = (gross * Number(it.discount_pct || 0)) / 100
+                  const sub = gross - disc
+                  return (
+                    <tr key={idx}>
+                      <td>
+                        <select className="input" value={it.product || ''} required
+                                onChange={(e) => {
+                                  const pid = Number(e.target.value)
+                                  const p = productMap[pid]
+                                  updItem(idx, { product: pid, unit_cost: p ? String(p.cost ?? '0') : it.unit_cost })
+                                }}>
+                          <option value="">— Producto —</option>
+                          {products?.map(p => <option key={p.id} value={p.id}>{p.sku} · {p.name}</option>)}
+                        </select>
+                      </td>
+                      <td className="w-24"><input type="number" min={1} className="input text-right" value={it.quantity}
+                             onChange={(e) => updItem(idx, { quantity: Number(e.target.value) })} /></td>
+                      <td className="w-32"><input className="input text-right" value={it.unit_cost}
+                             onChange={(e) => updItem(idx, { unit_cost: e.target.value })} /></td>
+                      <td className="w-24"><input className="input text-right" value={it.discount_pct}
+                             onChange={(e) => updItem(idx, { discount_pct: e.target.value })} /></td>
+                      <td className="text-right tabular-nums">{sub.toFixed(2)}</td>
+                      <td className="text-right"><button type="button" className="btn-ghost text-red-600" onClick={() => rmItem(idx)} aria-label="Quitar item"><X className="h-4 w-4" /></button></td>
+                    </tr>
+                  )
+                })}
+                {!(form.items ?? []).length && (
+                  <tr><td colSpan={6} className="text-center py-4 text-slate-400">Agregá al menos un item.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </form>
   )

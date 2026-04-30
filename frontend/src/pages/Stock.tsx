@@ -72,43 +72,89 @@ export default function StockPage() {
       </div>
 
       <div className="space-y-4">
-        <div className="card overflow-x-auto">
-          <h3 className="font-semibold mb-3">Productos con stock bajo</h3>
-          <table className="table">
-            <thead><tr><th>SKU</th><th>Producto</th><th>Stock</th><th>Mín.</th></tr></thead>
-            <tbody>
-              {low?.map((p) => (
-                <tr key={p.id}>
-                  <td className="font-mono">{p.sku}</td>
-                  <td>{p.name}</td>
-                  <td className="text-right tabular-nums text-amber-600 font-semibold">{p.stock_qty}</td>
-                  <td className="text-right tabular-nums">{p.min_stock}</td>
-                </tr>
-              ))}
-              {!low?.length && <tr><td colSpan={4} className="text-center py-4 text-slate-400">Sin alertas.</td></tr>}
-            </tbody>
-          </table>
+        <div>
+          <h3 className="font-semibold mb-3 md:mb-0 md:hidden">Productos con stock bajo</h3>
+          <div className="card overflow-x-auto hidden md:block">
+            <h3 className="font-semibold mb-3">Productos con stock bajo</h3>
+            <table className="table">
+              <thead><tr><th>SKU</th><th>Producto</th><th>Stock</th><th>Mín.</th></tr></thead>
+              <tbody>
+                {low?.map((p) => (
+                  <tr key={p.id}>
+                    <td className="font-mono">{p.sku}</td>
+                    <td>{p.name}</td>
+                    <td className="text-right tabular-nums text-amber-600 font-semibold">{p.stock_qty}</td>
+                    <td className="text-right tabular-nums">{p.min_stock}</td>
+                  </tr>
+                ))}
+                {!low?.length && <tr><td colSpan={4} className="text-center py-4 text-slate-400">Sin alertas.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+          <div className="md:hidden space-y-2">
+            {low?.map((p) => (
+              <div key={p.id} className="list-row space-y-1">
+                <div className="font-semibold leading-tight">{p.name}</div>
+                <div className="font-mono text-xs text-slate-500">{p.sku}</div>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs pt-0.5">
+                  <span className="text-slate-500">Stock</span>
+                  <span className="text-right tabular-nums text-amber-600 font-semibold">{p.stock_qty}</span>
+                  <span className="text-slate-500">Mínimo</span>
+                  <span className="text-right tabular-nums">{p.min_stock}</span>
+                </div>
+              </div>
+            ))}
+            {!low?.length && (
+              <div className="list-row text-center text-slate-400 py-4">Sin alertas.</div>
+            )}
+          </div>
         </div>
 
-        <div className="card overflow-x-auto">
-          <h3 className="font-semibold mb-3">Últimos movimientos</h3>
-          <table className="table">
-            <thead><tr><th>Fecha</th><th>Producto</th><th>Tipo</th><th>Cant.</th><th>Nota</th></tr></thead>
-            <tbody>
-              {movements?.map((m) => (
-                <tr key={m.id}>
-                  <td className="whitespace-nowrap text-xs text-slate-500">{m.created_at.replace('T', ' ').slice(0, 16)}</td>
-                  <td className="text-xs">{m.product_sku} · {m.product_name}</td>
-                  <td className="text-xs">{KIND_LABEL[m.kind] ?? m.kind}</td>
-                  <td className={`text-right tabular-nums ${m.quantity < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+        <div>
+          <h3 className="font-semibold mb-3 md:hidden">Últimos movimientos</h3>
+          <div className="card overflow-x-auto hidden md:block">
+            <h3 className="font-semibold mb-3">Últimos movimientos</h3>
+            <table className="table">
+              <thead><tr><th>Fecha</th><th>Producto</th><th>Tipo</th><th>Cant.</th><th>Nota</th></tr></thead>
+              <tbody>
+                {movements?.map((m) => (
+                  <tr key={m.id}>
+                    <td className="whitespace-nowrap text-xs text-slate-500">{m.created_at.replace('T', ' ').slice(0, 16)}</td>
+                    <td className="text-xs">{m.product_sku} · {m.product_name}</td>
+                    <td className="text-xs">{KIND_LABEL[m.kind] ?? m.kind}</td>
+                    <td className={`text-right tabular-nums ${m.quantity < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                      {m.quantity > 0 ? '+' : ''}{m.quantity}
+                    </td>
+                    <td className="text-xs text-slate-500">{m.note}</td>
+                  </tr>
+                ))}
+                {!movements?.length && <tr><td colSpan={5} className="text-center py-4 text-slate-400">Sin movimientos.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+          <div className="md:hidden space-y-2">
+            {movements?.map((m) => (
+              <div key={m.id} className="list-row space-y-1">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="leading-tight">{m.product_name}</div>
+                  <span className={`tabular-nums shrink-0 ${m.quantity < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
                     {m.quantity > 0 ? '+' : ''}{m.quantity}
-                  </td>
-                  <td className="text-xs text-slate-500">{m.note}</td>
-                </tr>
-              ))}
-              {!movements?.length && <tr><td colSpan={5} className="text-center py-4 text-slate-400">Sin movimientos.</td></tr>}
-            </tbody>
-          </table>
+                  </span>
+                </div>
+                <div className="font-mono text-xs text-slate-500">{m.product_sku}</div>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs pt-0.5">
+                  <span className="text-slate-500">Fecha</span>
+                  <span className="text-right">{m.created_at.replace('T', ' ').slice(0, 16)}</span>
+                  <span className="text-slate-500">Tipo</span>
+                  <span className="text-right">{KIND_LABEL[m.kind] ?? m.kind}</span>
+                </div>
+                {m.note && <div className="text-xs text-slate-500 pt-0.5">{m.note}</div>}
+              </div>
+            ))}
+            {!movements?.length && (
+              <div className="list-row text-center text-slate-400 py-4">Sin movimientos.</div>
+            )}
+          </div>
         </div>
       </div>
 

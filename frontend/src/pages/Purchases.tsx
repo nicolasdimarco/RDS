@@ -55,7 +55,7 @@ export default function PurchasesPage() {
           <option value="cancelled">Canceladas</option>
         </select>
       </div>
-      <div className="card overflow-x-auto">
+      <div className="card overflow-x-auto hidden md:block">
         <table className="table">
           <thead>
             <tr>
@@ -98,6 +98,46 @@ export default function PurchasesPage() {
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="md:hidden space-y-2">
+        {isLoading && <div className="list-row text-center text-slate-400 py-6">Cargando…</div>}
+        {purchases?.map((p) => (
+          <div key={p.id} className="list-row space-y-1.5">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <div className="font-semibold leading-tight">{p.supplier_name}</div>
+                <div className="font-mono text-xs text-slate-500">#{p.id} · {p.purchase_date}</div>
+              </div>
+              <span className={`badge ${STATUS_BADGE[p.status]} shrink-0`}>{STATUS_LABEL[p.status]}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs">
+              <span className="text-slate-500">Factura</span>
+              <span className="text-right font-mono">{p.invoice_number || '—'}</span>
+              <span className="text-slate-500">Total</span>
+              <span className="text-right tabular-nums">{p.currency} {Number(p.total).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
+              <span className="text-slate-500">USD</span>
+              <span className="text-right tabular-nums">US$ {Number(p.total_usd).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
+            </div>
+            <div className="flex justify-end gap-1 pt-1 border-t border-slate-100 dark:border-slate-700">
+              <Link to={`/purchases/${p.id}`} className="btn-ghost"
+                    aria-label={isAdmin ? 'Editar compra' : 'Ver compra'}
+                    title={isAdmin ? 'Editar' : 'Ver'}>
+                {isAdmin ? <Pencil className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </Link>
+              {isAdmin && (
+                <button className="btn-ghost text-red-600"
+                        onClick={() => confirm(`¿Eliminar la compra #${p.id}?`) && del.mutate(p.id)}
+                        aria-label="Eliminar compra" title="Eliminar">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+        {!isLoading && !purchases?.length && (
+          <div className="list-row text-center text-slate-400 py-6">Sin compras registradas.</div>
+        )}
       </div>
     </div>
   )

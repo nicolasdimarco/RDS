@@ -5,6 +5,7 @@ import { DollarSign, Eye, Pencil, Trash2 } from 'lucide-react'
 import { api, extractApiError, unwrap } from '@/lib/api'
 import type { Currency, ExchangeRate, PaymentMethod, Project, ProjectPayment } from '@/lib/types'
 import { selectIsAdmin, useAuth } from '@/store/auth'
+import { useIsMobile } from '@/lib/useMediaQuery'
 import PageHeader from '@/components/PageHeader'
 import Modal from '@/components/Modal'
 
@@ -32,6 +33,7 @@ const STATUS_BADGE: Record<string, string> = {
 export default function ProjectsPage() {
   const qc = useQueryClient()
   const isAdmin = useAuth(selectIsAdmin)
+  const isMobile = useIsMobile()
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<string>('')
   const [viewing, setViewing] = useState<Project | null>(null)
@@ -111,7 +113,7 @@ export default function ProjectsPage() {
           {Object.entries(STATUS_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
       </div>
-      <div className="card overflow-x-auto">
+      <div className="card overflow-x-auto hidden md:block">
         <table className="table">
           <thead>
             <tr>
@@ -177,6 +179,66 @@ export default function ProjectsPage() {
         </table>
       </div>
 
+      <div className="md:hidden space-y-2">
+        {isLoading && <div className="list-row text-center text-slate-400 py-6">Cargando…</div>}
+        {projects?.map((p) => {
+          const pct = Math.min(100, Math.max(0, Number(p.paid_pct ?? 0)))
+          return (
+            <div key={p.id} className="list-row space-y-1.5">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <div className="font-semibold leading-tight">{p.name}</div>
+                  <div className="text-xs text-slate-500">{p.client_name}</div>
+                </div>
+                <span className={`badge ${STATUS_BADGE[p.status]} shrink-0`}>{STATUS_LABEL[p.status]}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs">
+                <span className="text-slate-500">Total</span>
+                <span className="text-right tabular-nums">{p.currency} {Number(p.total).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
+                <span className="text-slate-500">USD</span>
+                <span className="text-right tabular-nums">US$ {Number(p.total_usd).toLocaleString('es-AR', { minimumFractionDigits: 2 })}</span>
+                <span className="text-slate-500">Margen</span>
+                <span className="text-right tabular-nums">{Number(p.margin_pct).toFixed(1)}%</span>
+              </div>
+              <div className="flex items-center gap-2 pt-1">
+                <div className="flex-1 h-2 bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                  <div className="h-full bg-emerald-500" style={{ width: `${pct}%` }} />
+                </div>
+                <span className="text-xs tabular-nums text-slate-600 dark:text-slate-300 w-10 text-right">{pct.toFixed(0)}%</span>
+              </div>
+              <div className="flex justify-end gap-1 pt-1 border-t border-slate-100 dark:border-slate-700">
+                <button className="btn-ghost" onClick={() => setViewing(p)}
+                        aria-label="Ver proyecto" title="Ver">
+                  <Eye className="h-4 w-4" />
+                </button>
+                {isAdmin && (
+                  <button className="btn-ghost" onClick={() => openPayment(p)}
+                          aria-label="Registrar pago" title="Registrar pago">
+                    <DollarSign className="h-4 w-4" />
+                  </button>
+                )}
+                {isAdmin && (
+                  <Link to={`/projects/${p.id}`} className="btn-ghost"
+                        aria-label="Editar proyecto" title="Editar">
+                    <Pencil className="h-4 w-4" />
+                  </Link>
+                )}
+                {isAdmin && (
+                  <button className="btn-ghost text-red-600"
+                          onClick={() => confirm(`¿Eliminar el proyecto ${p.name}?`) && del.mutate(p.id)}
+                          aria-label="Eliminar proyecto" title="Eliminar">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+          )
+        })}
+        {!isLoading && !projects?.length && (
+          <div className="list-row text-center text-slate-400 py-6">Sin proyectos cargados.</div>
+        )}
+      </div>
+
       <Modal open={!!viewing} onClose={() => setViewing(null)} wide
              title={viewing ? `Proyecto · ${viewing.name}` : 'Proyecto'}
              footer={<button className="btn-secondary" onClick={() => setViewing(null)}>Cerrar</button>}>
@@ -197,42 +259,76 @@ export default function ProjectsPage() {
                 <div className="whitespace-pre-wrap">{viewing.notes}</div></div>
             )}
 
-            <div className="overflow-x-auto">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Producto</th>
-                    <th>Cant.</th>
-                    <th>Precio unitario</th>
-                    <th>Costo</th>
-                    <th>Desc. %</th>
-                    <th>IVA %</th>
-                    <th>IVA</th>
-                    <th>Subtotal</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {viewing.items.map((it, idx) => {
-                    const ivaVal = Number(it.unit_price) * Number(it.quantity) * Number(it.iva_pct || 0) / 100
-                    return (
-                    <tr key={it.id ?? idx}>
-                      <td>{it.product_sku ? `${it.product_sku} · ${it.product_name}` : it.product_name ?? '—'}</td>
-                      <td className="text-right tabular-nums">{it.quantity}</td>
-                      <td className="text-right tabular-nums whitespace-nowrap">{fmt(viewing.currency, it.unit_price)}</td>
-                      <td className="text-right tabular-nums whitespace-nowrap">{fmt(viewing.currency, it.unit_cost)}</td>
-                      <td className="text-right tabular-nums">{Number(it.discount_pct).toFixed(2)}%</td>
-                      <td className="text-right tabular-nums">{Number(it.iva_pct ?? 0).toFixed(2)}%</td>
-                      <td className="text-right tabular-nums whitespace-nowrap">{fmt(viewing.currency, ivaVal)}</td>
-                      <td className="text-right tabular-nums whitespace-nowrap">{fmt(viewing.currency, it.line_total ?? '0')}</td>
+            {isMobile ? (
+              <div className="space-y-2">
+                {viewing.items.map((it, idx) => {
+                  const ivaVal = Number(it.unit_price) * Number(it.quantity) * Number(it.iva_pct || 0) / 100
+                  return (
+                    <div key={it.id ?? idx} className="list-row space-y-1.5">
+                      <div className="font-medium leading-tight">
+                        {it.product_sku ? `${it.product_sku} · ${it.product_name}` : it.product_name ?? '—'}
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs">
+                        <span className="text-slate-500">Cantidad</span>
+                        <span className="text-right tabular-nums">{it.quantity}</span>
+                        <span className="text-slate-500">Precio</span>
+                        <span className="text-right tabular-nums">{fmt(viewing.currency, it.unit_price)}</span>
+                        <span className="text-slate-500">Costo</span>
+                        <span className="text-right tabular-nums">{fmt(viewing.currency, it.unit_cost)}</span>
+                        <span className="text-slate-500">Desc.</span>
+                        <span className="text-right tabular-nums">{Number(it.discount_pct).toFixed(2)}%</span>
+                        <span className="text-slate-500">IVA</span>
+                        <span className="text-right tabular-nums">{Number(it.iva_pct ?? 0).toFixed(2)}% · {fmt(viewing.currency, ivaVal)}</span>
+                      </div>
+                      <div className="flex justify-between pt-1 border-t border-slate-100 dark:border-slate-700">
+                        <span className="text-slate-500">Subtotal</span>
+                        <span className="font-semibold tabular-nums">{fmt(viewing.currency, it.line_total ?? '0')}</span>
+                      </div>
+                    </div>
+                  )
+                })}
+                {!viewing.items.length && (
+                  <div className="text-center py-3 text-slate-400">Sin items.</div>
+                )}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Producto</th>
+                      <th>Cant.</th>
+                      <th>Precio unitario</th>
+                      <th>Costo</th>
+                      <th>Desc. %</th>
+                      <th>IVA %</th>
+                      <th>IVA</th>
+                      <th>Subtotal</th>
                     </tr>
-                    )
-                  })}
-                  {!viewing.items.length && (
-                    <tr><td colSpan={8} className="text-center py-3 text-slate-400">Sin items.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {viewing.items.map((it, idx) => {
+                      const ivaVal = Number(it.unit_price) * Number(it.quantity) * Number(it.iva_pct || 0) / 100
+                      return (
+                      <tr key={it.id ?? idx}>
+                        <td>{it.product_sku ? `${it.product_sku} · ${it.product_name}` : it.product_name ?? '—'}</td>
+                        <td className="text-right tabular-nums">{it.quantity}</td>
+                        <td className="text-right tabular-nums whitespace-nowrap">{fmt(viewing.currency, it.unit_price)}</td>
+                        <td className="text-right tabular-nums whitespace-nowrap">{fmt(viewing.currency, it.unit_cost)}</td>
+                        <td className="text-right tabular-nums">{Number(it.discount_pct).toFixed(2)}%</td>
+                        <td className="text-right tabular-nums">{Number(it.iva_pct ?? 0).toFixed(2)}%</td>
+                        <td className="text-right tabular-nums whitespace-nowrap">{fmt(viewing.currency, ivaVal)}</td>
+                        <td className="text-right tabular-nums whitespace-nowrap">{fmt(viewing.currency, it.line_total ?? '0')}</td>
+                      </tr>
+                      )
+                    })}
+                    {!viewing.items.length && (
+                      <tr><td colSpan={8} className="text-center py-3 text-slate-400">Sin items.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-slate-200 dark:border-slate-700">
               <div className="space-y-1">

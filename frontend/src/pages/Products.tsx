@@ -91,7 +91,7 @@ export default function ProductsPage() {
         <input className="input md:max-w-sm" placeholder="Buscar SKU, nombre, categoría…"
                value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
-      <div className="card overflow-x-auto">
+      <div className="card overflow-x-auto hidden md:block">
         <table className="table">
           <thead>
             <tr>
@@ -140,6 +140,56 @@ export default function ProductsPage() {
             )}
           </tbody>
         </table>
+      </div>
+
+      <div className="md:hidden space-y-2">
+        {filtered.map((p) => (
+          <div key={p.id} className="list-row space-y-1.5">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <div className="font-semibold leading-tight">{p.name}</div>
+                <div className="font-mono text-xs text-slate-500">{p.sku}</div>
+              </div>
+              {!p.is_active && <span className="badge bg-slate-200 text-slate-600">inactivo</span>}
+            </div>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs">
+              <span className="text-slate-500">Categoría</span>
+              <span className="text-right">{p.category_name}</span>
+              <span className="text-slate-500">Marca</span>
+              <span className="text-right">{p.brand_name ?? '—'}</span>
+              <span className="text-slate-500">Stock</span>
+              <span className={`text-right tabular-nums ${p.low_stock ? 'text-amber-600 font-semibold' : ''}`}>{p.stock_qty}</span>
+              <span className="text-slate-500">Costo</span>
+              <span className="text-right tabular-nums">{p.cost_currency} {p.cost}</span>
+              <span className="text-slate-500">Precio unitario</span>
+              <span className="text-right tabular-nums">{p.sale_currency} {p.sale_price}</span>
+              <span className="text-slate-500">Margen</span>
+              <span className={`text-right tabular-nums ${Number(p.margin_pct) < 0 ? 'text-red-600 font-semibold' : ''}`}>{p.margin_pct}%</span>
+            </div>
+            <div className="flex justify-end gap-1 pt-1 border-t border-slate-100 dark:border-slate-700">
+              <button className="btn-ghost" onClick={() => setViewing(p)}
+                      aria-label="Ver producto" title="Ver">
+                <Eye className="h-4 w-4" />
+              </button>
+              {isAdmin && (
+                <button className="btn-ghost" onClick={() => setEditing(p)}
+                        aria-label="Editar producto" title="Editar">
+                  <Pencil className="h-4 w-4" />
+                </button>
+              )}
+              {isAdmin && (
+                <button className="btn-ghost text-red-600"
+                        onClick={() => confirm('¿Eliminar producto?') && del.mutate(p.id)}
+                        aria-label="Eliminar producto" title="Eliminar">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
+        {!filtered.length && (
+          <div className="list-row text-center text-slate-400 py-6">Sin resultados.</div>
+        )}
       </div>
 
       <Modal open={!!editing} onClose={closeModal}

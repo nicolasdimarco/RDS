@@ -41,7 +41,7 @@ export default function UsersPage() {
         subtitle="Administración de cuentas y roles"
         actions={<button className="btn-primary" onClick={() => setEditing({ ...empty })}>+ Nuevo usuario</button>}
       />
-      <div className="card overflow-x-auto">
+      <div className="card overflow-x-auto hidden md:block">
         <table className="table">
           <thead>
             <tr><th>Usuario</th><th>Nombre</th><th>Email</th><th>Rol</th><th>Activo</th><th /></tr>
@@ -67,6 +67,38 @@ export default function UsersPage() {
             {!users?.length && <tr><td colSpan={6} className="py-6 text-center text-slate-400">Sin usuarios.</td></tr>}
           </tbody>
         </table>
+      </div>
+
+      <div className="md:hidden space-y-2">
+        {users?.map((u) => (
+          <div key={u.id} className="list-row space-y-1.5">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <div className="font-semibold leading-tight">{u.first_name} {u.last_name}</div>
+                <div className="font-mono text-xs text-slate-500">{u.username}</div>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <span className={`badge ${u.role === 'admin' ? 'bg-brand-100 text-brand-700' : 'bg-slate-200 text-slate-700'}`}>
+                  {u.role === 'admin' ? 'Administrador' : 'Usuario'}
+                </span>
+                {u.is_active
+                  ? <Check className="h-4 w-4 text-emerald-600" aria-label="Activo" />
+                  : <Minus className="h-4 w-4 text-slate-400" aria-label="Inactivo" />}
+              </div>
+            </div>
+            <div className="text-xs text-slate-500 break-all">{u.email}</div>
+            <div className="flex justify-end gap-1 pt-1 border-t border-slate-100 dark:border-slate-700">
+              <button className="btn-ghost" onClick={() => setEditing({ ...u, password: '' })}>Editar</button>
+              {u.is_active && (
+                <button className="btn-ghost text-red-600"
+                        onClick={() => confirm(`¿Desactivar ${u.username}?`) && del.mutate(u.id)}>Desactivar</button>
+              )}
+            </div>
+          </div>
+        ))}
+        {!users?.length && (
+          <div className="list-row text-center text-slate-400 py-6">Sin usuarios.</div>
+        )}
       </div>
 
       <Modal open={!!editing} onClose={() => setEditing(null)}
