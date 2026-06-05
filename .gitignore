@@ -18,11 +18,13 @@ env/
 backend/staticfiles/
 backend/media/
 backend/files/uploads/
+backend/initial_data.json
 
 # Environment
 .env
 .env.*
 !.env.example
+!.env.*.example
 
 # Node / Vite
 node_modules/
